@@ -53,6 +53,7 @@ struct ChatListView: View {
             #if DEBUG
             .onAppear {
                 if !demoDone, let route = DemoLaunch.route(store: model.store) { path = [route] }
+                if !demoDone, let url = DemoLaunch.importUI { importRequest = ImportRequest(urls: [url]) }
                 demoDone = true
             }
             #endif

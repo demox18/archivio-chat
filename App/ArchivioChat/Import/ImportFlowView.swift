@@ -46,6 +46,12 @@ struct ImportFlowView: View {
             WaitingView(title: "Lettura del file", detail: vm.currentURL.lastPathComponent)
         case .choosing:
             DestinationView(vm: vm)
+                #if DEBUG
+                .onAppear {
+                    if DemoLaunch.importInto, vm.destination == nil { vm.destination = model.chats.first?.id }
+                    if DemoLaunch.importAuto, vm.canAnalyze { vm.analyze() }
+                }
+                #endif
         case .analyzing:
             WaitingView(title: "Confronto con l'archivio", detail: "Nessun dato viene ancora modificato.")
         case .preview(let plan):

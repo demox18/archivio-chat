@@ -37,6 +37,9 @@ struct RootView: View {
                 SettingsView()
                     .tabItem { Label("Impostazioni", systemImage: "gearshape.fill") }.tag(2)
             }
+            #if DEBUG
+            .onAppear { DemoLaunch.scheduleSnapshot() }
+            #endif
         }
     }
 }

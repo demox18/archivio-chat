@@ -44,7 +44,14 @@ private struct ConversationContent: View {
     @State private var showSearch = false
     @State private var atBottom = true
     @State private var pendingJump: Int64?
+    @State private var bottomAnchored: Bool
     @State private var demoDone = false
+
+    init(vm: ConversationViewModel, initialAnchor: Int64?) {
+        self.vm = vm
+        self.initialAnchor = initialAnchor
+        _bottomAnchored = State(initialValue: initialAnchor == nil)
+    }
 
     var body: some View {
         ScrollViewReader { proxy in
@@ -63,14 +70,16 @@ private struct ConversationContent: View {
                 }
                 .scrollTargetLayout()
                 .padding(.horizontal, 10)
-                .padding(.vertical, 6)
+                .padding(.top, 6)
+                .padding(.bottom, 12)
             }
             .scrollPosition(id: $topID, anchor: .top)
-            .defaultScrollAnchor(.bottom)
+            .defaultScrollAnchor(bottomAnchored ? .bottom : .center)
             .background(Theme.chatBackground)
             .overlay(alignment: .bottomTrailing) {
                 if !atBottom || !vm.reachedEnd {
                     Button {
+                        bottomAnchored = true
                         vm.load(around: nil)
                         DispatchQueue.main.async {
                             if let last = vm.items.last { proxy.scrollTo(last.id, anchor: .bottom) }
@@ -104,7 +113,7 @@ private struct ConversationContent: View {
             .onChange(of: pendingJump) { _, target in
                 guard let target else { return }
                 pendingJump = nil
-                if !vm.contains(target) { vm.load(around: target) } else { vm.highlight(target) }
+                vm.load(around: target)
                 scroll(proxy, to: target)
             }
         }
@@ -122,6 +131,7 @@ private struct ConversationContent: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
+                .buttonStyle(.plain)
                 .accessibilityLabel("Info su \(vm.info?.title ?? "conversazione")")
             }
             ToolbarItem(placement: .topBarTrailing) {
@@ -153,9 +163,13 @@ private struct ConversationContent: View {
     }
 
     private func scroll(_ proxy: ScrollViewProxy, to messageID: Int64) {
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-            proxy.scrollTo(ChatItem.id(forMessage: messageID), anchor: .center)
+        bottomAnchored = false
+        let id = ChatItem.id(forMessage: messageID)
+        // Due passaggi: il primo porta in zona, il secondo corregge dopo che le righe hanno preso misura.
+        for delay in [0.05, 0.35] {
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) { proxy.scrollTo(id, anchor: .center) }
         }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { vm.resumePaging() }
     }
 
     private func appeared(_ index: Int) {

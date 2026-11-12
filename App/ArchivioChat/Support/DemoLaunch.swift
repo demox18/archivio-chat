@@ -1,5 +1,6 @@
 #if DEBUG
 import Foundation
+import UIKit
 import ArchivioCore
 
 /// Comandi di avvio per le prove nel simulatore (solo build di debug):
@@ -15,6 +16,46 @@ enum DemoLaunch {
     }
 
     static var open: String? { value("-demoOpen") }
+    /// -demoImportUI <file>: apre la schermata di importazione su quel file.
+    static var importUI: URL? { value("-demoImportUI").map { URL(fileURLWithPath: $0) } }
+    /// -demoImportAuto: preme "Analizza" da solo appena possibile.
+    static var importInto: Bool { ProcessInfo.processInfo.arguments.contains("-demoInto") }
+    static var importAuto: Bool { ProcessInfo.processInfo.arguments.contains("-demoImportAuto") }
+
+    /// -demoSnapshot <file.png>: dopo qualche secondo l'app salva un'immagine
+    /// della propria finestra e si chiude. -demoDark usa il tema scuro.
+    @MainActor
+    static func scheduleSnapshot() {
+        guard let path = value("-demoSnapshot") else { return }
+        let delay = Double(value("-demoDelay") ?? "") ?? 4
+        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+        for scene in scenes {
+            let size = CGSize(width: 402, height: 874)
+            scene.sizeRestrictions?.minimumSize = size
+            scene.sizeRestrictions?.maximumSize = size
+            if ProcessInfo.processInfo.arguments.contains("-demoDark") {
+                scene.windows.forEach { $0.overrideUserInterfaceStyle = .dark }
+            }
+            if ProcessInfo.processInfo.arguments.contains("-demoLight") {
+                scene.windows.forEach { $0.overrideUserInterfaceStyle = .light }
+            }
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+            guard let window = scenes.flatMap(\.windows).first(where: \.isKeyWindow) ?? scenes.flatMap(\.windows).first else { exit(2) }
+            // Il visualizzatore a schermo intero vive in una finestra presentata sopra.
+            let top = scenes.flatMap(\.windows).last ?? window
+            // Un pannello presentato (ricerca, importazione) si fotografa direttamente.
+            var controller = top.rootViewController
+            var presented = false
+            while let next = controller?.presentedViewController { controller = next; presented = true }
+            let target: UIView = presented ? (controller?.view ?? top) : top
+            let image = UIGraphicsImageRenderer(bounds: target.bounds).image { _ in
+                target.drawHierarchy(in: target.bounds, afterScreenUpdates: true)
+            }
+            try? image.pngData()?.write(to: URL(fileURLWithPath: path))
+            exit(0)
+        }
+    }
     static var find: String? { value("-demoFind") }
     private static let myNames: Set<String> = ["Io", "Demy", "demy", "demox18"]
 
@@ -62,6 +103,10 @@ enum DemoLaunch {
               let chat = try? store.chatList().first else { return nil }
         var messageID: Int64?
         if let find { messageID = (try? store.search(SearchFilter(text: find, conversationID: chat.id), limit: 1))?.first?.message.id }
+        if let kind = value("-demoKind"), let section = MediaSection(rawValue: kind) {
+            let all = (try? store.mediaItems(conversationID: chat.id, section: section, limit: 40, offset: 0)) ?? []
+            messageID = all.dropFirst(all.count / 2).first?.id
+        }
         return ChatRoute(conversationID: chat.id, messageID: messageID)
     }
 }

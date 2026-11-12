@@ -33,6 +33,11 @@ final class ConversationViewModel {
     private(set) var reachedEnd = true
     private(set) var highlightedID: Int64?
     private var loading = false
+    /// Durante un salto a un messaggio il caricamento automatico delle pagine
+    /// è sospeso: altrimenti la lista, ancora in fondo, caricherebbe a catena.
+    private(set) var pagingEnabled = true
+
+    func resumePaging() { pagingEnabled = true }
 
     /// Vero quando i partecipanti sono più di due: si mostra il nome del mittente.
     var isGroup: Bool { (info?.participants.count ?? 0) > 2 }
@@ -50,6 +55,7 @@ final class ConversationViewModel {
     func load(around anchor: Int64?) {
         reloadInfo()
         let limit = anchor == nil ? pageSize : pageSize * 2
+        pagingEnabled = anchor == nil
         rows = (try? store.messages(conversationID: conversationID, around: anchor, limit: limit)) ?? []
         reachedEnd = anchor == nil
         reachedStart = rows.count < limit && anchor == nil
@@ -58,7 +64,7 @@ final class ConversationViewModel {
     }
 
     func loadEarlier() {
-        guard !loading, !reachedStart, let first = rows.first else { return }
+        guard pagingEnabled, !loading, !reachedStart, let first = rows.first else { return }
         loading = true
         defer { loading = false }
         let older = (try? store.messages(conversationID: conversationID, before: first, limit: pageSize)) ?? []
@@ -69,7 +75,7 @@ final class ConversationViewModel {
     }
 
     func loadLater() {
-        guard !loading, !reachedEnd, let last = rows.last else { return }
+        guard pagingEnabled, !loading, !reachedEnd, let last = rows.last else { return }
         loading = true
         defer { loading = false }
         let newer = (try? store.messages(conversationID: conversationID, after: last, limit: pageSize)) ?? []

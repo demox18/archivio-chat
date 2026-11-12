@@ -142,11 +142,23 @@ struct AudioBubble: View {
                 .accessibilityLabel(isCurrent && model.audio.isPlaying ? "Pausa" : "Riproduci messaggio vocale")
 
                 VStack(alignment: .leading, spacing: 4) {
-                    Slider(value: Binding(
-                        get: { isCurrent ? model.audio.progress : 0 },
-                        set: { model.audio.seek(id: row.id, to: $0) }), in: 0...1)
-                        .disabled(!isCurrent)
-                        .tint(Theme.accent)
+                    GeometryReader { geo in
+                        let fraction = isCurrent ? model.audio.progress : 0
+                        ZStack(alignment: .leading) {
+                            Capsule().fill(Theme.secondaryText.opacity(0.3)).frame(height: 4)
+                            Capsule().fill(Theme.accent).frame(width: max(0, geo.size.width * fraction), height: 4)
+                            Circle().fill(Theme.accent).frame(width: 12, height: 12)
+                                .offset(x: max(0, min(geo.size.width - 12, geo.size.width * fraction - 6)))
+                        }
+                        .frame(maxHeight: .infinity)
+                        .contentShape(Rectangle())
+                        .gesture(DragGesture(minimumDistance: 0).onEnded { value in
+                            guard isCurrent, geo.size.width > 0 else { return }
+                            model.audio.seek(id: row.id, to: min(1, max(0, value.location.x / geo.size.width)))
+                        })
+                    }
+                    .frame(height: 20)
+                    .accessibilityHidden(true)
                     Text(url == nil ? "Audio non riproducibile" : (duration.map(Dates.duration) ?? "–:––"))
                         .font(.caption2).foregroundStyle(Theme.secondaryText).monospacedDigit()
                 }
