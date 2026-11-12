@@ -44,6 +44,7 @@ private struct ConversationContent: View {
     @State private var showSearch = false
     @State private var atBottom = true
     @State private var pendingJump: Int64?
+    @State private var demoDone = false
 
     var body: some View {
         ScrollViewReader { proxy in
@@ -92,6 +93,13 @@ private struct ConversationContent: View {
             }
             .onAppear {
                 if let initialAnchor { scroll(proxy, to: initialAnchor) }
+                #if DEBUG
+                if !demoDone {
+                    demoDone = true
+                    if DemoLaunch.open == "info" || DemoLaunch.open == "gallery" { showInfo = true }
+                    if DemoLaunch.open == "search" { showSearch = true }
+                }
+                #endif
             }
             .onChange(of: pendingJump) { _, target in
                 guard let target else { return }

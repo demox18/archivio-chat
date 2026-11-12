@@ -13,6 +13,7 @@ struct ChatListView: View {
     @State private var searchText = ""
     @State private var showPicker = false
     @State private var importRequest: ImportRequest?
+    @State private var demoDone = false
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -49,6 +50,12 @@ struct ChatListView: View {
             .navigationDestination(for: ChatRoute.self) { route in
                 ConversationView(route: route)
             }
+            #if DEBUG
+            .onAppear {
+                if !demoDone, let route = DemoLaunch.route(store: model.store) { path = [route] }
+                demoDone = true
+            }
+            #endif
         }
         .fileImporter(isPresented: $showPicker, allowedContentTypes: [.zip, .plainText, .text],
                       allowsMultipleSelection: true) { result in

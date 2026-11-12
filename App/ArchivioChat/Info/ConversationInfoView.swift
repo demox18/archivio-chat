@@ -21,6 +21,13 @@ struct ConversationInfoView: View {
     @State private var confirmDelete = false
     @State private var confirmDeleteAgain = false
     @State private var errorMessage: String?
+    @State private var showGallery: Bool = {
+        #if DEBUG
+        return DemoLaunch.open == "gallery"
+        #else
+        return false
+        #endif
+    }()
 
     var body: some View {
         List {
@@ -58,6 +65,9 @@ struct ConversationInfoView: View {
             }
         }
         .navigationTitle("Info chat")
+        .navigationDestination(isPresented: $showGallery) {
+            MediaGalleryView(conversationID: conversationID, onJump: onJump)
+        }
         .navigationBarTitleDisplayMode(.inline)
         .onAppear(perform: reload)
         .onChange(of: photoItem) { _, item in

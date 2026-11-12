@@ -40,6 +40,9 @@ final class AppModel {
             self.store = store
             importer = Importer(store: store)
             thumbnails = ThumbnailCache(media: store.media, directory: caches)
+            #if DEBUG
+            DemoLaunch.run(store: store, importer: Importer(store: store))
+            #endif
         } catch {
             store = nil
             importer = nil
